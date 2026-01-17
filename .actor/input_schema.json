@@ -1,0 +1,85 @@
+{
+    "title": "ImmobileScount24 scraper",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "operation": {
+            "title": "Operation",
+            "type": "string",
+            "description": "Select Listing sale or rent properties",
+            "editor": "select",
+            "default": "sale",
+            "enum": ["sale", "rent"],
+            "enumTitles": ["Sale", "Rent"]
+        },
+        "propertyType": {
+            "title": "Property type",
+            "type": "string",
+            "description": "Select type of property",
+            "editor": "select",
+            "default": "apartment",
+            "enum": ["apartment", "house", "plot", "solid-house", "shorttermaccommodation", "flatshareroom", "garage","office", "store","industry", "gastronomy", "tradesite", "specialpurpose", "investment", "compulsoryauction"],
+            "enumTitles": ["Apartment", "House", "Plot", "Solid/Prefabricated house", "Temporary living", "Shared flat", "Garage", "Office", "Retail trade", "Hall / Production", "Gastronomy / hotel", "Industry plot", "Special purpose", "Investment", "Compulsory auction"]
+        },
+        "minPrice": {
+            "title": "Minimum price",
+            "type": "integer",
+            "description": "Lower price of estate.",
+            "nullable": true
+        },
+        "maxPrice": {
+            "title": "Maximum price",
+            "type": "integer",
+            "description": "Maximum price of estate.",
+            "nullable": true
+        },
+        "country": {
+            "title": "Country",
+            "type": "string",
+            "description": "Select your country",
+            "editor": "select",
+            "default": "de",
+            "enum": ["de", "at"],
+            "enumTitles": ["Germany", "Austria"]
+        },
+        "maxItems": {
+            "title": "Limit the number of items",
+            "type": "integer",
+            "description": "How many real estates do you want to get. If you don't want to get all items, because  you maybe only want to test the solution, or want to know what are the new real estates on the market.",
+            "nullable": true,
+            "prefill": 10
+        },
+        "endPage": {
+            "title": "Limit of scraped pages",
+            "type": "integer",
+            "description": "Scrape only limit pages",
+            "nullable": true,
+            "prefill": 50
+        },
+        "startUrl": {
+            "title": "URL you want to scrape",
+            "type": "array",
+            "prefill": [],
+            "description": "URL(s) of places or pages what will be scraped. For example https://www.idealista.com/venta-viviendas/madrid/centro/con-de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,tres-banos-o-mas/",
+            "editor": "requestListSources",
+            "nullable": true,
+            "sectionCaption": "Use URL(s) instead of your own search"
+        },
+        "proxy": {
+            "title": "Proxy configuration",
+            "type": "object",
+            "description": "Select proxies to be used by your crawler.",
+            "prefill": { "useApifyProxy": true,
+                "apifyProxyGroups": [
+                    "RESIDENTIAL"
+                ] },
+            "default": { "useApifyProxy": true,
+                "apifyProxyGroups": [
+                    "RESIDENTIAL"
+                ] },
+            "editor": "proxy",
+            "sectionCaption": "Advanced options (Proxy configuration)"
+        }
+    },
+    "required": ["proxy", "operation", "country"]
+}

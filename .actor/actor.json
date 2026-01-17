@@ -1,0 +1,16 @@
+{
+	"actorSpecification": 1,
+	"name": "immobille-scout24",
+    "title": "immobilienscout24.de",
+    "version": "1.0.0",
+	"meta": {
+		"templateId": "js-crawlee-cheerio",
+		"generatedBy": "<FILL-IN-MODEL>"
+	},
+	"input": "./input_schema.json",
+	"output": "./output_schema.json",
+	"storages": {
+		"dataset": "./dataset_schema.json"
+	},
+	"dockerfile": "../Dockerfile"
+}

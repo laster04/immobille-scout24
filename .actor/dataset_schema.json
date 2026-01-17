@@ -1,0 +1,93 @@
+{
+    "actorSpecification": 1,
+    "fields": {},
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": [
+                    "url",
+                    "title",
+                    "id",
+                    "size",
+                    "baths",
+                    "rooms",
+                    "address",
+                    "typology",
+                    "subTypology",
+                    "photos",
+                    "tour3d",
+                    "contacts",
+                    "price",
+                    "latitude",
+                    "longitude"
+                ]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "url": {
+                        "label": "URL",
+                        "format": "link"
+                    },
+                    "title": {
+                        "label": "Title",
+                        "format": "text"
+                    },
+                    "id": {
+                        "label": "Id",
+                        "format": "number"
+                    },
+                    "price": {
+                        "label": "Price",
+                        "format": "number"
+                    },
+                    "size": {
+                        "label": "Size",
+                        "format": "number"
+                    },
+                    "baths": {
+                        "label": "Baths",
+                        "format": "number"
+                    },
+                    "rooms": {
+                        "label": "Rooms",
+                        "format": "number"
+                    },
+                    "address": {
+                        "label": "Address",
+                        "format": "text"
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "format": "number"
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "format": "number"
+                    },
+                    "typology": {
+                        "label": "Typology",
+                        "format": "text"
+                    },
+                    "subTypology": {
+                        "label": "Sub typology",
+                        "format": "text"
+                    },
+                    "photos": {
+                        "label": "Photos",
+                        "format": "array"
+                    },
+                    "tour3d": {
+                        "label": "Tour 3D",
+                        "format": "array"
+                    },
+                    "contacts": {
+                        "label": "Contacts",
+                        "format": "object"
+                    }
+                }
+            }
+        }
+    }
+}
