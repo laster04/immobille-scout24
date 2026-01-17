@@ -3,6 +3,13 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "district": {
+            "title": "Location",
+            "type": "string",
+            "description": "Where you want to look for the real estates, e.g. Madrid. For further filtering you can use the URL below.",
+            "editor": "textfield",
+            "prefill": "Berlin"
+        },
         "operation": {
             "title": "Operation",
             "type": "string",
