@@ -97,19 +97,20 @@ export const handlePropertyList = async (context, { userInput }) => {
 };
 
 export const handleProperty = async (context) => {
-    const { json } = context;
+    const { json, request: { userData: { requestPayload } } } = context;
 
-    await Dataset.pushData(handleOneProperty(json));
+    await Dataset.pushData(handleOneProperty(json, requestPayload.operation));
 };
 
 
-const handleOneProperty = (property) => {
+const handleOneProperty = (property, operation) => {
     const { adTargetingParameters, contact } = property;
     const output = {
         url: `https://www.immobilienscout24.de/expose/${property.header.id}`,
         id: property.header.id,
+        operation: operation,
         typology: adTargetingParameters.obj_typeOfFlat,
-        price: adTargetingParameters.obj_purchasePrice,
+        price: operation === 'rent' ? adTargetingParameters.obj_baseRent : adTargetingParameters.obj_purchasePrice,
         size: adTargetingParameters.obj_livingSpace,
         contacts: {
             commercialName: contact.contactData.agent.company,
@@ -143,7 +144,9 @@ const handleOneProperty = (property) => {
                             output.rooms = attr.text
                             break;
                         case 'Total rent:':
-                            output.price = attr.text
+                            if (output.price.length === 0) {
+                                output.price = attr.text
+                            }
                             break;
                         case 'Rooms':
                             output.rooms = attr.text
