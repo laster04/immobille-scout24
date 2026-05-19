@@ -24,12 +24,34 @@ Scrape property listings from [immobilienscout24.de](https://www.immobilienscout
 | `maxPrice`     | Integer | —        | Maximum price filter |
 | `maxItems`     | Integer | —        | Cap on total results returned |
 | `endPage`      | Integer | —        | Last page to scrape (default: 50) |
-| `startUrl`     | Array   | —        | Direct URLs — property detail pages or search result pages |
+| `startUrl`     | Array   | —        | Direct URLs — property detail pages or filtered search result pages (see below) |
 | `proxy`        | Object  | ✓        | Proxy configuration. **RESIDENTIAL proxies required.** |
 
 ### Property types
 
 `apartment`, `house`, `plot`, `solid-house`, `shorttermaccommodation`, `flatshareroom`, `garage`, `office`, `store`, `industry`, `gastronomy`, `tradesite`, `specialpurpose`, `investment`, `compulsoryauction`
+
+## Searching via Website URLs
+
+The easiest way to apply filters (rooms, size, features, etc.) is to configure your search directly on [immobilienscout24.de](https://www.immobilienscout24.de), then paste the URL into `startUrl`.
+
+The scraper automatically extracts the property type, operation (sale/rent), and all active filters from the URL and forwards them to the API.
+
+**Supported URL types in `startUrl`:**
+
+| URL pattern | What happens |
+|-------------|--------------|
+| `.../Suche/de/berlin/berlin/wohnung-kaufen?price=300000-600000&numberofrooms=3-` | Full search with all filters applied |
+| `.../Suche/de/berlin/berlin/wohnung-kaufen` | Search with no extra filters |
+| `.../expose/157410302` | Single property detail page |
+
+**Example** — paste this URL into `startUrl` to scrape Berlin apartments for sale, 3+ rooms, €300k–€600k:
+
+```
+https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-kaufen?price=300000-600000&numberofrooms=3-
+```
+
+All filter parameters from the URL (price range, number of rooms, living space, etc.) are forwarded automatically. The `operation` and `propertyType` input fields are ignored when the URL already encodes them in the path.
 
 ## Example Output
 

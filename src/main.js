@@ -2,7 +2,7 @@ import { Actor } from 'apify';
 import { log, CheerioCrawler} from '@crawlee/cheerio';
 import { BASIC_HEADERS, LABELS, LISTING_BODY, MAX_ITEMS_STAT_NAME } from './consts.js';
 import { handleDistrictSearch, handleProperty, handlePropertyList } from './routes.js';
-import { getSearchUrl } from './ListingSearchHelper.js';
+import { getSearchUrl, parseWebSearchUrl } from './ListingSearchHelper.js';
 
 await Actor.init();
 
@@ -72,35 +72,35 @@ if (startUrl.length > 0) {
                 },
             });
         } else if (url.match(/\/Suche\//)) {
-            let u = url.replaceAll('https://www.immobilienscout24.de/Suche/', '');
-            let uArr = u.split('/');
-            let geopath = '';
-            for(let i = 0; i < uArr.length - 1; i++) {
-                geopath += '/'+uArr[i];
-            }
-
+            const parsed = parseWebSearchUrl(url);
+            const resolvedPropertyType = parsed.propertyType ?? propertyType;
+            const resolvedOperation = parsed.operation ?? operation;
 
             const searchUrl = getSearchUrl({
-                geocodes: geopath,
-                realestateType: propertyType,
-                operation: operation,
+                geocodes: parsed.geopath,
+                realestateType: resolvedPropertyType,
+                operation: resolvedOperation,
                 pageNumber: 1,
                 min: minPrice,
-                max: maxPrice
+                max: maxPrice,
+                extraParams: parsed.queryParams,
             });
             await requestQueue.addRequest({
                 url: searchUrl,
                 method: 'POST',
-                uniqueKey: `${geopath}-1`,
+                uniqueKey: `${parsed.geopath}-1`,
                 payload: JSON.stringify(LISTING_BODY),
                 headers: BASIC_HEADERS,
                 userData: {
                     label: LABELS.PROPERTY_LIST,
                     requestPayload: {
-                        geopath: geopath,
+                        geopath: parsed.geopath,
                         pageNumber: 1,
                         maxItems: 20,
                         ...userInput,
+                        propertyType: resolvedPropertyType,
+                        operation: resolvedOperation,
+                        extraParams: parsed.queryParams,
                     },
                 },
             });

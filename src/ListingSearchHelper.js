@@ -1,13 +1,79 @@
 
-
 const BASE_SEARCH_URL = 'https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&pagesize=20&searchType=region&sorting=standard&channel=is24';
 const OPERATION_SALE = 'sale';
 
-function getSearchUrl( inputQuery ) {
-    const { geocodes, realestateType, operation, pageNumber = 1, min = null, max = null } = inputQuery;
+// Maps the last path segment of an immobilienscout24.de /Suche/ URL to propertyType + operation input values
+const URL_SEGMENT_MAP = {
+    'wohnung-kaufen': { propertyType: 'apartment', operation: 'sale' },
+    'wohnung-mieten': { propertyType: 'apartment', operation: 'rent' },
+    'haus-kaufen': { propertyType: 'house', operation: 'sale' },
+    'haus-mieten': { propertyType: 'house', operation: 'rent' },
+    'grundstueck-kaufen': { propertyType: 'plot', operation: 'sale' },
+    'grundstueck-mieten': { propertyType: 'plot', operation: 'rent' },
+    'garage-kaufen': { propertyType: 'garage', operation: 'sale' },
+    'garage-mieten': { propertyType: 'garage', operation: 'rent' },
+    'wg-zimmer': { propertyType: 'flatshareroom', operation: 'rent' },
+    'kurzzeitvermietung': { propertyType: 'shorttermaccommodation', operation: 'rent' },
+    'anlage-kaufen': { propertyType: 'investment', operation: 'sale' },
+    'zwangsversteigerung': { propertyType: 'compulsoryauction', operation: 'sale' },
+    'bueroflaeche-kaufen': { propertyType: 'office', operation: 'sale' },
+    'bueroflaeche-mieten': { propertyType: 'office', operation: 'rent' },
+    'einzelhandel-kaufen': { propertyType: 'store', operation: 'sale' },
+    'einzelhandel-mieten': { propertyType: 'store', operation: 'rent' },
+    'hallen-kaufen': { propertyType: 'industry', operation: 'sale' },
+    'hallen-mieten': { propertyType: 'industry', operation: 'rent' },
+    'gastgewerbe-kaufen': { propertyType: 'gastronomy', operation: 'sale' },
+    'gastgewerbe-mieten': { propertyType: 'gastronomy', operation: 'rent' },
+    'gewerbegrundst-kaufen': { propertyType: 'tradesite', operation: 'sale' },
+    'gewerbegrundst-mieten': { propertyType: 'tradesite', operation: 'rent' },
+    'sonderimmo-kaufen': { propertyType: 'specialpurpose', operation: 'sale' },
+    'sonderimmo-mieten': { propertyType: 'specialpurpose', operation: 'rent' },
+};
+
+// Params we set explicitly — skip if they appear in web URL query string
+const INTERNAL_PARAMS = new Set(['realestatetype', 'geocodes', 'pagenumber', 'pagesize', 'searchType', 'sorting', 'channel', 'features', 'priceType']);
+
+/**
+ * Parses a web search URL from immobilienscout24.de and returns the geopath,
+ * propertyType, operation, and any filter query params to forward to the API.
+ */
+export function parseWebSearchUrl(url) {
+    const urlObj = new URL(url);
+    const parts = urlObj.pathname.replace('/Suche/', '').split('/').filter(Boolean);
+    const segment = parts[parts.length - 1];
+    const geopath = '/' + parts.slice(0, -1).join('/');
+
+    const typeInfo = URL_SEGMENT_MAP[segment] ?? null;
+
+    const queryParams = {};
+    for (const [key, value] of urlObj.searchParams) {
+        if (!INTERNAL_PARAMS.has(key)) {
+            queryParams[key] = value;
+        }
+    }
+
+    return { geopath, queryParams, ...(typeInfo ?? {}) };
+}
+
+export function getSearchUrl(inputQuery) {
+    const { geocodes, realestateType, operation, pageNumber = 1, min = null, max = null, extraParams = {} } = inputQuery;
     const realEstateQuery = getRealEstateTypeOperation(realestateType, operation);
-    const priceQuery = getPriceFilter(min, max);
-    return BASE_SEARCH_URL + `&geocodes=${geocodes}` +`&pagenumber=${pageNumber}` + `&${realEstateQuery}` + `&${priceQuery}`;
+
+    // Skip built-in price filter if the web URL already provides a price param
+    const priceQuery = 'price' in extraParams ? null : getPriceFilter(min, max);
+
+    let url = BASE_SEARCH_URL
+        + `&geocodes=${geocodes}`
+        + `&pagenumber=${pageNumber}`
+        + `&${realEstateQuery}`;
+
+    if (priceQuery) url += `&${priceQuery}`;
+
+    for (const [key, value] of Object.entries(extraParams)) {
+        url += `&${key}=${value}`;
+    }
+
+    return url;
 }
 
 function getRealEstateTypeOperation(realestateType, operation) {
@@ -115,8 +181,4 @@ function getPriceFilter(min, max) {
         priceQuery = `${priceQuery}${max}`;
     }
     return `price=${priceQuery}`;
-}
-
-export {
-    getSearchUrl,
 }

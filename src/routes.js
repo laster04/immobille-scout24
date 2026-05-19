@@ -77,6 +77,7 @@ export const handlePropertyList = async (context, { userInput }) => {
                 pageNumber: body.pageNumber,
                 min: body.minPrice,
                 max: body.maxPrice,
+                extraParams: body.extraParams ?? {},
             });
 
             await requestQueue.addRequest({
@@ -98,7 +99,7 @@ export const handlePropertyList = async (context, { userInput }) => {
 export const handleProperty = async (context) => {
     const { json, request: { userData: { requestPayload } } } = context;
 
-    await Dataset.pushData(handleOneProperty(json, requestPayload.operation));
+    await Dataset.pushData(handleOneProperty(json, requestPayload?.operation ?? 'sale'));
 };
 
 
