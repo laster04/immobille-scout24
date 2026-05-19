@@ -6,7 +6,7 @@ export const handleDistrictSearch = async (context) => {
     const { json, crawler: { requestQueue }, request: { userData } } = context;
     const { userInput } = userData;
     log.info(`Found ${json.results.length}`);
-    let foundLocation = json.results[0];
+    const foundLocation = json.results[0];
     log.info('Pick:', { data: json.results[0] })
 
     const url = getSearchUrl({
@@ -42,7 +42,7 @@ export const handlePropertyList = async (context, { userInput }) => {
     const { maxItems, endPage = 10 } = userInput;
     const { requestPayload : body } = userData;
 
-    let items = (body.pageNumber - 1) * body.maxItems;
+    let items = (body.pageNumber - 1) * json.pageSize;
     let processedItems = items;
     for (const article of json.resultListItems) {
         if (processedItems >= maxItems) {
@@ -66,9 +66,8 @@ export const handlePropertyList = async (context, { userInput }) => {
     if (page === 1) {
         log.info(`Total pageItems ${json.totalResults}`);
     }
-    if (items < json.totalResults && page <= endPage) {
-        if (maxItems !== null && items > maxItems){
-
+    if (items < json.totalResults && page <= endPage && page <= json.numberOfPages) {
+        if (maxItems !== null && items > maxItems) {
         } else {
             body.pageNumber = page + 1;
             const url = getSearchUrl({
@@ -77,7 +76,7 @@ export const handlePropertyList = async (context, { userInput }) => {
                 operation: body.operation,
                 pageNumber: body.pageNumber,
                 min: body.minPrice,
-                max: body.maxPrice
+                max: body.maxPrice,
             });
 
             await requestQueue.addRequest({
