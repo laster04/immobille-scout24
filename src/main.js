@@ -2,7 +2,7 @@ import { Actor } from 'apify';
 import { log, CheerioCrawler} from '@crawlee/cheerio';
 import { BASIC_HEADERS, LABELS, LISTING_BODY, MAX_ITEMS_STAT_NAME } from './consts.js';
 import { handleDistrictSearch, handleProperty, handlePropertyList } from './routes.js';
-import { getSearchUrl, parseWebSearchUrl } from './ListingSearchHelper.js';
+import { getSearchUrl, getShapeSearchUrl, parseWebSearchUrl, parseShapeUrl } from './ListingSearchHelper.js';
 
 await Actor.init();
 
@@ -69,6 +69,38 @@ if (startUrl.length > 0) {
                 headers: BASIC_HEADERS,
                 userData: {
                     label: LABELS.PROPERTY,
+                },
+            });
+        } else if (url.match(/\/Suche\/shape\//)) {
+            const parsed = parseShapeUrl(url);
+            const resolvedPropertyType = parsed.propertyType ?? propertyType;
+            const resolvedOperation = parsed.operation ?? operation;
+
+            const searchUrl = getShapeSearchUrl({
+                shape: parsed.shape,
+                realestateType: resolvedPropertyType,
+                operation: resolvedOperation,
+                pageNumber: 1,
+                min: minPrice,
+                max: maxPrice,
+                extraParams: parsed.queryParams,
+            });
+            await requestQueue.addRequest({
+                url: searchUrl,
+                method: 'GET',
+                uniqueKey: `shape-${parsed.shape}-1`,
+                headers: BASIC_HEADERS,
+                userData: {
+                    label: LABELS.PROPERTY_LIST,
+                    requestPayload: {
+                        shape: parsed.shape,
+                        pageNumber: 1,
+                        maxItems: 20,
+                        ...userInput,
+                        propertyType: resolvedPropertyType,
+                        operation: resolvedOperation,
+                        extraParams: parsed.queryParams,
+                    },
                 },
             });
         } else if (url.match(/\/Suche\//)) {

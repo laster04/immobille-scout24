@@ -1,5 +1,6 @@
 
 const BASE_SEARCH_URL = 'https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&pagesize=20&searchType=region&sorting=standard&channel=is24';
+const BASE_SHAPE_URL = 'https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&pagesize=20&searchType=shape&sorting=standard&channel=is24';
 const OPERATION_SALE = 'sale';
 
 // Maps the last path segment of an immobilienscout24.de /Suche/ URL to propertyType + operation input values
@@ -53,6 +54,45 @@ export function parseWebSearchUrl(url) {
     }
 
     return { geopath, queryParams, ...(typeInfo ?? {}) };
+}
+
+export function parseShapeUrl(url) {
+    const urlObj = new URL(url);
+    const shapeEncoded = urlObj.searchParams.get('shape');
+    // Website URL encodes polyline as base64url; API expects the raw polyline string
+    const shape = Buffer.from(shapeEncoded.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const parts = urlObj.pathname.split('/').filter(Boolean);
+    const shapeIdx = parts.indexOf('shape');
+    const slug = parts[shapeIdx + 1] ?? '';
+    const typeInfo = URL_SEGMENT_MAP[slug] ?? null;
+
+    const queryParams = {};
+    for (const [key, value] of urlObj.searchParams) {
+        if (!INTERNAL_PARAMS.has(key) && key !== 'shape') {
+            queryParams[key] = value;
+        }
+    }
+
+    return { shape, queryParams, ...(typeInfo ?? {}) };
+}
+
+export function getShapeSearchUrl(inputQuery) {
+    const { shape, realestateType, operation, pageNumber = 1, min = null, max = null, extraParams = {} } = inputQuery;
+    const realEstateQuery = getRealEstateTypeOperation(realestateType, operation);
+    const priceQuery = 'price' in extraParams ? null : getPriceFilter(min, max);
+
+    let url = BASE_SHAPE_URL
+        + `&shape=${encodeURIComponent(shape)}`
+        + `&pagenumber=${pageNumber}`
+        + `&${realEstateQuery}`;
+
+    if (priceQuery) url += `&${priceQuery}`;
+
+    for (const [key, value] of Object.entries(extraParams)) {
+        url += `&${key}=${value}`;
+    }
+
+    return url;
 }
 
 export function getSearchUrl(inputQuery) {

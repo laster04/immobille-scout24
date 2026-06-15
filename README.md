@@ -5,7 +5,8 @@ Scrape property listings from [immobilienscout24.de](https://www.immobilienscout
 ## Features
 
 - **Search by location** — enter a district or city name to find matching listings
-- **Search by URL** — paste any search results page or individual property URL
+- **Search by URL** — paste any search results page, shape search URL, or individual property URL
+- **Shape search** — paste a polygon/drawn-area URL from the website to scrape within a custom boundary
 - **Sale & rental** — target for-sale or rent listings across all property types
 - **Price filtering** — set min/max price range
 - **Rich output** — price, size, rooms, bathrooms, photos, 3D tours, coordinates, agent contact
@@ -43,6 +44,7 @@ The scraper automatically extracts the property type, operation (sale/rent), and
 |-------------|--------------|
 | `.../Suche/de/berlin/berlin/wohnung-kaufen?price=300000-600000&numberofrooms=3-` | Full search with all filters applied |
 | `.../Suche/de/berlin/berlin/wohnung-kaufen` | Search with no extra filters |
+| `.../Suche/shape/wohnung-kaufen?shape=<encoded-polygon>` | Search within a drawn area/polygon |
 | `.../expose/157410302` | Single property detail page |
 
 **Example** — paste this URL into `startUrl` to scrape Berlin apartments for sale, 3+ rooms, €300k–€600k:
@@ -51,7 +53,13 @@ The scraper automatically extracts the property type, operation (sale/rent), and
 https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-kaufen?price=300000-600000&numberofrooms=3-
 ```
 
-All filter parameters from the URL (price range, number of rooms, living space, etc.) are forwarded automatically. The `operation` and `propertyType` input fields are ignored when the URL already encodes them in the path.
+**Shape search** — draw an area on the website map, copy the resulting URL, and paste it into `startUrl`:
+
+```
+https://www.immobilienscout24.de/Suche/shape/wohnung-kaufen?shape=c2FhX0l1anBvQWRdX0M-c2VAdV9AcXVFZ3lBelo
+```
+
+The scraper extracts the polygon from the `shape` query parameter and property type/operation from the URL path segment. All extra filter parameters are forwarded automatically. The `operation` and `propertyType` input fields are ignored when the URL already encodes them in the path.
 
 ## Example Output
 

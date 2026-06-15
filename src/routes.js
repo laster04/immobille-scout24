@@ -1,6 +1,6 @@
 import { log, Dataset } from '@crawlee/cheerio';
 import { LABELS, BASIC_HEADERS, LISTING_BODY } from './consts.js';
-import { getSearchUrl } from './ListingSearchHelper.js';
+import { getSearchUrl, getShapeSearchUrl } from './ListingSearchHelper.js';
 
 export const handleDistrictSearch = async (context) => {
     const { json, crawler: { requestQueue }, request: { userData } } = context;
@@ -70,21 +70,33 @@ export const handlePropertyList = async (context, { userInput }) => {
         if (maxItems !== null && items > maxItems) {
         } else {
             body.pageNumber = page + 1;
-            const url = getSearchUrl({
-                geocodes: body.geopath,
-                realestateType: body.propertyType,
-                operation: body.operation,
-                pageNumber: body.pageNumber,
-                min: body.minPrice,
-                max: body.maxPrice,
-                extraParams: body.extraParams ?? {},
-            });
+            const url = body.shape
+                ? getShapeSearchUrl({
+                    shape: body.shape,
+                    realestateType: body.propertyType,
+                    operation: body.operation,
+                    pageNumber: body.pageNumber,
+                    min: body.minPrice,
+                    max: body.maxPrice,
+                    extraParams: body.extraParams ?? {},
+                })
+                : getSearchUrl({
+                    geocodes: body.geopath,
+                    realestateType: body.propertyType,
+                    operation: body.operation,
+                    pageNumber: body.pageNumber,
+                    min: body.minPrice,
+                    max: body.maxPrice,
+                    extraParams: body.extraParams ?? {},
+                });
 
             await requestQueue.addRequest({
                 url,
-                uniqueKey: `${body.geopath}-${body.pageNumber}-${body.propertyType}`,
-                method: 'POST',
-                payload: JSON.stringify(LISTING_BODY),
+                uniqueKey: body.shape
+                    ? `shape-${body.shape}-${body.pageNumber}`
+                    : `${body.geopath}-${body.pageNumber}-${body.propertyType}`,
+                method: body.shape ? 'GET' : 'POST',
+                ...(body.shape ? {} : { payload: JSON.stringify(LISTING_BODY) }),
                 headers: BASIC_HEADERS,
                 userData: {
                     ...userData,
@@ -110,7 +122,7 @@ const handleOneProperty = (property, operation) => {
         id: property.header.id,
         operation: operation,
         typology: adTargetingParameters.obj_typeOfFlat,
-        price: operation === 'rent' ? adTargetingParameters.obj_baseRent : adTargetingParameters.obj_purchasePrice,
+        price: operation === 'rent' ? adTargetingParameters.obj_baseRent : adTargetingParameters?.obj_purchasePrice,
         size: adTargetingParameters.obj_livingSpace,
         contacts: {
             commercialName: contact.contactData.agent.company,
