@@ -19,6 +19,9 @@
                     "tour3d",
                     "contacts",
                     "price",
+                    "condition",
+                    "availableFrom",
+                    "description",
                     "latitude",
                     "longitude"
                 ]
@@ -85,6 +88,18 @@
                     "contacts": {
                         "label": "Contacts",
                         "format": "object"
+                    },
+                    "condition": {
+                        "label": "Condition",
+                        "format": "text"
+                    },
+                    "availableFrom": {
+                        "label": "Available from",
+                        "format": "text"
+                    },
+                    "description": {
+                        "label": "Description",
+                        "format": "text"
                     }
                 }
             }

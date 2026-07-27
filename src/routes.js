@@ -122,8 +122,12 @@ const handleOneProperty = (property, operation) => {
         id: property.header.id,
         operation: operation,
         typology: adTargetingParameters.obj_typeOfFlat,
-        price: operation === 'rent' ? adTargetingParameters.obj_baseRent : adTargetingParameters?.obj_purchasePrice,
+        price: operation === 'rent'
+            ? (adTargetingParameters.obj_baseRent ?? adTargetingParameters.obj_rent)
+            : adTargetingParameters?.obj_purchasePrice,
         size: adTargetingParameters.obj_livingSpace,
+        condition: adTargetingParameters.obj_condition,
+        availableFrom: adTargetingParameters.obj_availableFrom,
         contacts: {
             commercialName: contact.contactData.agent.company,
             contactName: contact.contactData.agent.name,
@@ -145,6 +149,11 @@ const handleOneProperty = (property, operation) => {
                 output.longitude = section?.location?.lng;
                 output.address = section.addressLine1 + ' ' + section.addressLine2
                 break;
+            case 'TEXT_AREA':
+                if (section.title === 'Property Description') {
+                    output.description = section.text;
+                }
+                break;
             case 'TOP_ATTRIBUTES':
             case 'ATTRIBUTE_LIST':
                 for (const attr of section.attributes) {
@@ -156,7 +165,7 @@ const handleOneProperty = (property, operation) => {
                             output.rooms = attr.text
                             break;
                         case 'Total rent:':
-                            if (output.price.length === 0) {
+                            if (!output.price) {
                                 output.price = attr.text
                             }
                             break;
@@ -166,6 +175,25 @@ const handleOneProperty = (property, operation) => {
                         case 'Apartment type:':
                             output.subTypology = attr.text
                             break;
+                    }
+                    // Fallback for non-apartment types (house/office/garage/...), whose
+                    // ATTRIBUTE_LIST labels don't match the literal apartment strings above
+                    // (e.g. garages use "Building type:" instead of "Apartment type:").
+                    const label = (attr.label ?? '').toLowerCase();
+                    if (!output.rooms && /room/.test(label) && !/bath/.test(label)) {
+                        output.rooms = attr.text;
+                    }
+                    if (!output.baths && /bath/.test(label)) {
+                        output.baths = attr.text;
+                    }
+                    if (!output.subTypology && /type:$/.test(label)) {
+                        output.subTypology = attr.text;
+                    }
+                    // TOP_ATTRIBUTES always carries the listing's headline price,
+                    // regardless of realEstateType — used as fallback when
+                    // adTargetingParameters lacks a type-specific price key (e.g. garages: obj_rent).
+                    if (!output.price && attr.highlighted) {
+                        output.price = attr.text.replace(/[^\d]/g, '');
                     }
                 }
                 break;
