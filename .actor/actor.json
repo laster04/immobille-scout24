@@ -1,16 +1,17 @@
 {
-	"actorSpecification": 1,
-	"name": "immobille-scout24",
-    "title": "immobilienscout24.de",
+    "actorSpecification": 1,
+    "name": "immobille-scout24",
+    "title": "ImmobilienScout24 Scraper — ImmoScout24 .de/.at",
+    "description": "Paste any immobilienscout24.de URL and get the listings as structured data: price, size, rooms, energy class, features, agent contact, photos and coordinates — 65+ fields per property.",
     "version": "1.0.0",
-	"meta": {
-		"templateId": "js-crawlee-cheerio",
-		"generatedBy": "<FILL-IN-MODEL>"
-	},
-	"input": "./input_schema.json",
-	"output": "./output_schema.json",
-	"storages": {
-		"dataset": "./dataset_schema.json"
-	},
-	"dockerfile": "../Dockerfile"
+    "meta": {
+        "templateId": "js-crawlee-cheerio",
+        "generatedBy": "claude-opus-5"
+    },
+    "input": "./input_schema.json",
+    "output": "./output_schema.json",
+    "storages": {
+        "dataset": "./dataset_schema.json"
+    },
+    "dockerfile": "../Dockerfile"
 }

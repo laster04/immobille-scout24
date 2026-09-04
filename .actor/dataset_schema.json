@@ -7,23 +7,72 @@
             "transformation": {
                 "fields": [
                     "url",
-                    "title",
                     "id",
+                    "scoutId",
+                    "objectNumber",
+                    "title",
+                    "operation",
+                    "price",
+                    "pricePerSqm",
+                    "purchasePrice",
+                    "baseRent",
+                    "serviceCharge",
+                    "totalRent",
+                    "hasCommission",
                     "size",
-                    "baths",
+                    "plotArea",
                     "rooms",
-                    "address",
+                    "bedrooms",
+                    "baths",
+                    "floor",
+                    "numberOfFloors",
+                    "yearConstructed",
                     "typology",
                     "subTypology",
-                    "photos",
-                    "tour3d",
-                    "contacts",
-                    "price",
+                    "propertyType",
+                    "realEstateType",
                     "condition",
+                    "interiorQuality",
+                    "newlyConstructed",
+                    "rented",
+                    "heatingType",
+                    "firingTypes",
+                    "energyEfficiencyClass",
+                    "energyCertificateType",
+                    "thermalCharacteristic",
+                    "balcony",
+                    "garden",
+                    "cellar",
+                    "lift",
+                    "fittedKitchen",
+                    "barrierFree",
+                    "assistedLiving",
+                    "petsAllowed",
+                    "parkingSpaces",
                     "availableFrom",
-                    "description",
+                    "address",
+                    "street",
+                    "houseNumber",
+                    "zipCode",
+                    "city",
+                    "district",
+                    "quarter",
+                    "state",
+                    "country",
                     "latitude",
-                    "longitude"
+                    "longitude",
+                    "published",
+                    "isNewListing",
+                    "isPrivateListing",
+                    "listingType",
+                    "description",
+                    "furnishing",
+                    "locationDescription",
+                    "otherNotes",
+                    "contacts",
+                    "photos",
+                    "photosCount",
+                    "tour3d"
                 ]
             },
             "display": {
@@ -33,40 +82,84 @@
                         "label": "URL",
                         "format": "link"
                     },
+                    "id": {
+                        "label": "Id",
+                        "format": "text"
+                    },
+                    "scoutId": {
+                        "label": "Scout ID",
+                        "format": "text"
+                    },
+                    "objectNumber": {
+                        "label": "Object number",
+                        "format": "text"
+                    },
                     "title": {
                         "label": "Title",
                         "format": "text"
                     },
-                    "id": {
-                        "label": "Id",
-                        "format": "number"
+                    "operation": {
+                        "label": "Operation",
+                        "format": "text"
                     },
                     "price": {
                         "label": "Price",
                         "format": "number"
                     },
-                    "size": {
-                        "label": "Size",
+                    "pricePerSqm": {
+                        "label": "Price per m²",
                         "format": "number"
                     },
-                    "baths": {
-                        "label": "Baths",
+                    "purchasePrice": {
+                        "label": "Purchase price",
+                        "format": "number"
+                    },
+                    "baseRent": {
+                        "label": "Base rent",
+                        "format": "number"
+                    },
+                    "serviceCharge": {
+                        "label": "Service charge",
+                        "format": "number"
+                    },
+                    "totalRent": {
+                        "label": "Total rent",
+                        "format": "number"
+                    },
+                    "hasCommission": {
+                        "label": "Commission",
+                        "format": "boolean"
+                    },
+                    "size": {
+                        "label": "Living space m²",
+                        "format": "number"
+                    },
+                    "plotArea": {
+                        "label": "Plot area m²",
                         "format": "number"
                     },
                     "rooms": {
                         "label": "Rooms",
                         "format": "number"
                     },
-                    "address": {
-                        "label": "Address",
-                        "format": "text"
-                    },
-                    "latitude": {
-                        "label": "Latitude",
+                    "bedrooms": {
+                        "label": "Bedrooms",
                         "format": "number"
                     },
-                    "longitude": {
-                        "label": "Longitude",
+                    "baths": {
+                        "label": "Bathrooms",
+                        "format": "number"
+                    },
+                    "floor": {
+                        "label": "Floor",
+                        "format": "number"
+                    },
+                    "numberOfFloors": {
+                        "label": "Floors in building",
+                        "format": "number"
+                    },
+                    "yearConstructed": {
+                        "label": "Year built",
                         "format": "number"
                     },
                     "typology": {
@@ -77,29 +170,181 @@
                         "label": "Sub typology",
                         "format": "text"
                     },
-                    "photos": {
-                        "label": "Photos",
-                        "format": "array"
+                    "propertyType": {
+                        "label": "Property type",
+                        "format": "text"
                     },
-                    "tour3d": {
-                        "label": "Tour 3D",
-                        "format": "array"
-                    },
-                    "contacts": {
-                        "label": "Contacts",
-                        "format": "object"
+                    "realEstateType": {
+                        "label": "Real estate type",
+                        "format": "text"
                     },
                     "condition": {
                         "label": "Condition",
                         "format": "text"
                     },
+                    "interiorQuality": {
+                        "label": "Interior quality",
+                        "format": "text"
+                    },
+                    "newlyConstructed": {
+                        "label": "New build",
+                        "format": "boolean"
+                    },
+                    "rented": {
+                        "label": "Currently rented",
+                        "format": "boolean"
+                    },
+                    "heatingType": {
+                        "label": "Heating type",
+                        "format": "text"
+                    },
+                    "firingTypes": {
+                        "label": "Energy source",
+                        "format": "text"
+                    },
+                    "energyEfficiencyClass": {
+                        "label": "Energy class",
+                        "format": "text"
+                    },
+                    "energyCertificateType": {
+                        "label": "Energy certificate",
+                        "format": "text"
+                    },
+                    "thermalCharacteristic": {
+                        "label": "Energy demand kWh/(m²a)",
+                        "format": "number"
+                    },
+                    "balcony": {
+                        "label": "Balcony",
+                        "format": "boolean"
+                    },
+                    "garden": {
+                        "label": "Garden",
+                        "format": "boolean"
+                    },
+                    "cellar": {
+                        "label": "Cellar",
+                        "format": "boolean"
+                    },
+                    "lift": {
+                        "label": "Elevator",
+                        "format": "boolean"
+                    },
+                    "fittedKitchen": {
+                        "label": "Fitted kitchen",
+                        "format": "boolean"
+                    },
+                    "barrierFree": {
+                        "label": "Step-free",
+                        "format": "boolean"
+                    },
+                    "assistedLiving": {
+                        "label": "Assisted living",
+                        "format": "boolean"
+                    },
+                    "petsAllowed": {
+                        "label": "Pets allowed",
+                        "format": "boolean"
+                    },
+                    "parkingSpaces": {
+                        "label": "Parking spaces",
+                        "format": "number"
+                    },
                     "availableFrom": {
                         "label": "Available from",
+                        "format": "text"
+                    },
+                    "address": {
+                        "label": "Address",
+                        "format": "text"
+                    },
+                    "street": {
+                        "label": "Street",
+                        "format": "text"
+                    },
+                    "houseNumber": {
+                        "label": "House number",
+                        "format": "text"
+                    },
+                    "zipCode": {
+                        "label": "Zip code",
+                        "format": "text"
+                    },
+                    "city": {
+                        "label": "City",
+                        "format": "text"
+                    },
+                    "district": {
+                        "label": "District",
+                        "format": "text"
+                    },
+                    "quarter": {
+                        "label": "Quarter",
+                        "format": "text"
+                    },
+                    "state": {
+                        "label": "State",
+                        "format": "text"
+                    },
+                    "country": {
+                        "label": "Country",
+                        "format": "text"
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "format": "number"
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "format": "number"
+                    },
+                    "published": {
+                        "label": "Published",
+                        "format": "text"
+                    },
+                    "isNewListing": {
+                        "label": "New listing",
+                        "format": "boolean"
+                    },
+                    "isPrivateListing": {
+                        "label": "Private listing",
+                        "format": "boolean"
+                    },
+                    "listingType": {
+                        "label": "Listing type",
                         "format": "text"
                     },
                     "description": {
                         "label": "Description",
                         "format": "text"
+                    },
+                    "furnishing": {
+                        "label": "Furnishing",
+                        "format": "text"
+                    },
+                    "locationDescription": {
+                        "label": "Location description",
+                        "format": "text"
+                    },
+                    "otherNotes": {
+                        "label": "Other notes",
+                        "format": "text"
+                    },
+                    "contacts": {
+                        "label": "Contacts",
+                        "format": "object"
+                    },
+                    "photos": {
+                        "label": "Photos",
+                        "format": "array"
+                    },
+                    "photosCount": {
+                        "label": "Photo count",
+                        "format": "number"
+                    },
+                    "tour3d": {
+                        "label": "3D tour",
+                        "format": "array"
                     }
                 }
             }

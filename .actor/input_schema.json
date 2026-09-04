@@ -1,19 +1,41 @@
 {
-    "title": "ImmobileScount24 scraper",
+    "title": "ImmobilienScout24 Scraper",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+        "startUrl": {
+            "title": "🔗 immobilienscout24.de URLs (easiest way)",
+            "type": "array",
+            "description": "Search on immobilienscout24.de in your browser, then paste the resulting URL(s) here — every filter you clicked (rooms, size, features, energy class, ...) is applied automatically. Works with search result pages, drawn map areas (/Suche/shape/...) and single property pages (/expose/...). Leave empty to build a search with the fields below.",
+            "editor": "requestListSources",
+            "prefill": [
+                { "url": "https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten?numberofrooms=3-" }
+            ],
+            "nullable": true,
+            "sectionCaption": "Paste a URL — the fastest way to start",
+            "sectionDescription": "Anything you can filter on the website you can scrape here: copy the URL from your browser and paste it in. Fields further down are only used when no URL is given (except the limits, which always apply)."
+        },
         "district": {
             "title": "Location",
             "type": "string",
-            "description": "Where you want to look for the real estates, e.g. Madrid. For further filtering you can use the URL below.",
+            "description": "City or district to search, e.g. Berlin or Munich. Ignored when a URL is provided above.",
             "editor": "textfield",
-            "prefill": "Berlin"
+            "sectionCaption": "Or build the search here",
+            "sectionDescription": "Used only when no URL is pasted above. Either fill in a Location, or a latitude + longitude + radius for a radius search."
+        },
+        "country": {
+            "title": "Country",
+            "type": "string",
+            "description": "Country the location belongs to",
+            "editor": "select",
+            "default": "de",
+            "enum": ["de", "at"],
+            "enumTitles": ["Germany", "Austria"]
         },
         "operation": {
             "title": "Operation",
             "type": "string",
-            "description": "Select Listing sale or rent properties",
+            "description": "Scrape properties for sale or for rent",
             "editor": "select",
             "default": "sale",
             "enum": ["sale", "rent"],
@@ -22,70 +44,194 @@
         "propertyType": {
             "title": "Property type",
             "type": "string",
-            "description": "Select type of property",
+            "description": "Type of property to scrape",
             "editor": "select",
             "default": "apartment",
-            "enum": ["apartment", "house", "plot", "solid-house", "shorttermaccommodation", "flatshareroom", "garage","office", "store","industry", "gastronomy", "tradesite", "specialpurpose", "investment", "compulsoryauction"],
-            "enumTitles": ["Apartment", "House", "Plot", "Solid/Prefabricated house", "Temporary living", "Shared flat", "Garage", "Office", "Retail trade", "Hall / Production", "Gastronomy / hotel", "Industry plot", "Special purpose", "Investment", "Compulsory auction"]
+            "enum": [
+                "apartment",
+                "house",
+                "plot",
+                "solid-house",
+                "shorttermaccommodation",
+                "flatshareroom",
+                "garage",
+                "office",
+                "store",
+                "industry",
+                "gastronomy",
+                "tradesite",
+                "specialpurpose",
+                "investment",
+                "compulsoryauction"
+            ],
+            "enumTitles": [
+                "Apartment",
+                "House",
+                "Plot",
+                "Solid/Prefabricated house",
+                "Temporary living",
+                "Shared flat",
+                "Garage",
+                "Office",
+                "Retail trade",
+                "Hall / Production",
+                "Gastronomy / hotel",
+                "Industry plot",
+                "Special purpose",
+                "Investment",
+                "Compulsory auction"
+            ]
+        },
+        "coordinates": {
+            "title": "Coordinates (radius search)",
+            "type": "string",
+            "editor": "textfield",
+            "description": "Search around a point instead of a named place — latitude, longitude, e.g. 52.52, 13.405. Needs a radius below.",
+            "nullable": true
+        },
+        "radiusKm": {
+            "title": "Radius",
+            "type": "integer",
+            "unit": "km",
+            "description": "How far around the coordinates above to search",
+            "nullable": true
         },
         "minPrice": {
             "title": "Minimum price",
             "type": "integer",
-            "description": "Lower price of estate.",
-            "nullable": true
+            "unit": "€",
+            "description": "Purchase price for sale listings, base rent per month for rentals",
+            "nullable": true,
+            "sectionCaption": "Filters",
+            "sectionDescription": "Applied to the search built above. A pasted URL brings its own filters and overrides these."
         },
         "maxPrice": {
             "title": "Maximum price",
             "type": "integer",
-            "description": "Maximum price of estate.",
+            "unit": "€",
+            "description": "Purchase price for sale listings, base rent per month for rentals",
             "nullable": true
         },
-        "country": {
-            "title": "Country",
-            "type": "string",
-            "description": "Select your country",
+        "minRooms": {
+            "title": "Minimum rooms",
+            "type": "integer",
+            "nullable": true
+        },
+        "maxRooms": {
+            "title": "Maximum rooms",
+            "type": "integer",
+            "nullable": true
+        },
+        "minSize": {
+            "title": "Minimum living space",
+            "type": "integer",
+            "unit": "m²",
+            "nullable": true
+        },
+        "maxSize": {
+            "title": "Maximum living space",
+            "type": "integer",
+            "unit": "m²",
+            "nullable": true
+        },
+        "minConstructionYear": {
+            "title": "Built after",
+            "type": "integer",
+            "description": "Earliest construction year, e.g. 1990",
+            "nullable": true
+        },
+        "maxConstructionYear": {
+            "title": "Built before",
+            "type": "integer",
+            "description": "Latest construction year, e.g. 2020",
+            "nullable": true
+        },
+        "equipment": {
+            "title": "Must have",
+            "type": "array",
+            "description": "Only return listings with all of the selected features",
             "editor": "select",
-            "default": "de",
-            "enum": ["de", "at"],
-            "enumTitles": ["Germany", "Austria"]
+            "items": {
+                "type": "string",
+                "enum": [
+                    "balcony",
+                    "builtinkitchen",
+                    "cellar",
+                    "garden",
+                    "lift",
+                    "guesttoilet",
+                    "parking",
+                    "handicappedaccessible"
+                ],
+                "enumTitles": [
+                    "Balcony / terrace",
+                    "Fitted kitchen",
+                    "Cellar",
+                    "Garden",
+                    "Elevator",
+                    "Guest toilet",
+                    "Parking space",
+                    "Step-free access"
+                ]
+            },
+            "nullable": true
+        },
+        "petsAllowed": {
+            "title": "Pets allowed",
+            "type": "boolean",
+            "description": "Rentals only — only return listings that allow pets",
+            "default": false
+        },
+        "excludeNewBuildProjects": {
+            "title": "Exclude new-build projects",
+            "type": "boolean",
+            "description": "Skip developer project listings, which often repeat the same building many times",
+            "default": false
+        },
+        "sortBy": {
+            "title": "Sort results by",
+            "type": "string",
+            "description": "\"Newest first\" is the one to use for monitoring the market — combine it with a small item limit to get only fresh listings.",
+            "editor": "select",
+            "default": "default",
+            "enum": ["default", "newest", "priceAsc", "priceDesc", "sizeDesc"],
+            "enumTitles": [
+                "Standard (relevance)",
+                "Newest first",
+                "Price: low to high",
+                "Price: high to low",
+                "Living space: largest first"
+            ]
         },
         "maxItems": {
             "title": "Limit the number of items",
             "type": "integer",
-            "description": "How many real estates do you want to get. If you don't want to get all items, because  you maybe only want to test the solution, or want to know what are the new real estates on the market.",
+            "description": "Stop after this many properties. Leave empty to scrape everything the search returns.",
             "nullable": true,
-            "prefill": 10
+            "prefill": 10,
+            "sectionCaption": "Limits"
         },
         "endPage": {
             "title": "Limit of scraped pages",
             "type": "integer",
-            "description": "Scrape only limit pages",
+            "description": "Stop after this many result pages (20 properties per page)",
             "nullable": true,
             "prefill": 50
-        },
-        "startUrl": {
-            "title": "URL you want to scrape",
-            "type": "array",
-            "prefill": [],
-            "description": "URL(s) of places or pages what will be scraped. For example https://www.idealista.com/venta-viviendas/madrid/centro/con-de-tres-dormitorios,de-cuatro-cinco-habitaciones-o-mas,tres-banos-o-mas/",
-            "editor": "requestListSources",
-            "nullable": true,
-            "sectionCaption": "Use URL(s) instead of your own search"
         },
         "proxy": {
             "title": "Proxy configuration",
             "type": "object",
-            "description": "Select proxies to be used by your crawler.",
-            "prefill": { "useApifyProxy": true,
-                "apifyProxyGroups": [
-                    "RESIDENTIAL"
-                ] },
-            "default": { "useApifyProxy": true,
-                "apifyProxyGroups": [
-                    "RESIDENTIAL"
-                ] },
+            "description": "RESIDENTIAL proxies are required — datacenter proxies are blocked by the site.",
+            "prefill": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"] },
+            "default": { "useApifyProxy": true, "apifyProxyGroups": ["RESIDENTIAL"] },
             "editor": "proxy",
-            "sectionCaption": "Advanced options (Proxy configuration)"
+            "sectionCaption": "Advanced options"
+        },
+        "debugLog": {
+            "title": "Debug log",
+            "type": "boolean",
+            "description": "Log every request the Actor makes — useful when a search returns nothing",
+            "default": false
         }
     },
     "required": ["proxy", "operation", "country"]

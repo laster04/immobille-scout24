@@ -1,7 +1,10 @@
-const BASE_SEARCH_URL =
-    'https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&pagesize=20&searchType=region&sorting=standard&channel=is24';
-const BASE_SHAPE_URL =
-    'https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&pagesize=20&searchType=shape&sorting=standard&channel=is24';
+import { SORTING_MAP } from './consts.js';
+
+const BASE_URL =
+    'https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&pagesize=20&channel=is24';
+const BASE_SEARCH_URL = `${BASE_URL}&searchType=region`;
+const BASE_SHAPE_URL = `${BASE_URL}&searchType=shape`;
+const BASE_RADIUS_URL = `${BASE_URL}&searchType=radius`;
 const OPERATION_SALE = 'sale';
 
 // Maps the last path segment of an immobilienscout24.de /Suche/ URL to propertyType + operation input values
@@ -140,46 +143,93 @@ export function parseShapeUrl(url) {
     return { shape, queryParams: collectQueryParams(urlObj, ['shape']), ...(typeInfo ?? {}) };
 }
 
-export function getShapeSearchUrl(inputQuery) {
-    const { shape, realestateType, operation, pageNumber = 1, min = null, max = null, extraParams = {} } = inputQuery;
-    const realEstateQuery = getRealEstateTypeOperation(realestateType, operation);
-    const priceQuery = 'price' in extraParams ? null : getPriceFilter(min, max);
+/**
+ * Turns the actor's own filter inputs into API query params (verified against the mobile API).
+ * Params parsed off a pasted website URL win over these — see `buildSearchQuery`.
+ */
+export function buildFilterParams(input = {}) {
+    const params = {};
+    const range = (min, max, decimals = 0) => {
+        if (min == null && max == null) return null;
+        const fmt = (v) => (v == null ? '' : Number(v).toFixed(decimals));
+        return `${fmt(min)}-${fmt(max)}`;
+    };
 
-    let url = `${BASE_SHAPE_URL}&shape=${encodeURIComponent(shape)}&pagenumber=${pageNumber}&${realEstateQuery}`;
+    const rooms = range(input.minRooms, input.maxRooms, 1);
+    if (rooms) params.numberofrooms = rooms;
 
-    if (priceQuery) url += `&${priceQuery}`;
+    const livingSpace = range(input.minSize, input.maxSize, 1);
+    if (livingSpace) params.livingspace = livingSpace;
 
-    for (const [key, value] of Object.entries(extraParams)) {
-        url += `&${key}=${value}`;
+    const constructionYear = range(input.minConstructionYear, input.maxConstructionYear);
+    if (constructionYear) params.constructionyear = constructionYear;
+
+    if (Array.isArray(input.equipment) && input.equipment.length > 0) {
+        params.equipment = input.equipment.join(',');
+    }
+    if (input.petsAllowed) {
+        params.petsallowedtypes = 'yes';
+    }
+    if (input.excludeNewBuildProjects) {
+        params.exclusioncriteria = 'projectlisting';
     }
 
-    return url;
+    const sorting = SORTING_MAP[input.sortBy ?? 'default'];
+    if (sorting) params.sorting = sorting;
+
+    return params;
+}
+
+/**
+ * Shared query tail for every search type: property type + operation, price, filters.
+ * `extraParams` (taken off a pasted website URL) overrides the actor's own filter inputs,
+ * because the pasted URL is the more specific instruction.
+ */
+function buildSearchQuery({
+    realestateType,
+    operation,
+    pageNumber = 1,
+    min = null,
+    max = null,
+    extraParams = {},
+    filters = {},
+}) {
+    const realEstateQuery = getRealEstateTypeOperation(realestateType, operation);
+    const merged = { sorting: 'standard', ...filters, ...extraParams };
+
+    // Skip the built-in price filter if the web URL already provides a price param
+    const priceQuery = 'price' in merged ? null : getPriceFilter(min, max);
+
+    let query = `pagenumber=${pageNumber}&${realEstateQuery}`;
+    if (priceQuery) query += `&${priceQuery}`;
+    for (const [key, value] of Object.entries(merged)) {
+        query += `&${key}=${value}`;
+    }
+    return query;
+}
+
+export function getShapeSearchUrl(inputQuery) {
+    return `${BASE_SHAPE_URL}&shape=${encodeURIComponent(inputQuery.shape)}&${buildSearchQuery(inputQuery)}`;
 }
 
 export function getSearchUrl(inputQuery) {
-    const {
-        geocodes,
-        realestateType,
-        operation,
-        pageNumber = 1,
-        min = null,
-        max = null,
-        extraParams = {},
-    } = inputQuery;
-    const realEstateQuery = getRealEstateTypeOperation(realestateType, operation);
+    return `${BASE_SEARCH_URL}&geocodes=${inputQuery.geocodes}&${buildSearchQuery(inputQuery)}`;
+}
 
-    // Skip built-in price filter if the web URL already provides a price param
-    const priceQuery = 'price' in extraParams ? null : getPriceFilter(min, max);
+/** Radius search around a point: the API wants `lat;lng;radiusInKm` in a single param. */
+export function getRadiusSearchUrl(inputQuery) {
+    const { latitude, longitude, radiusKm } = inputQuery;
+    const coordinates = `${latitude};${longitude};${Number(radiusKm).toFixed(1)}`;
+    return `${BASE_RADIUS_URL}&geocoordinates=${encodeURIComponent(coordinates)}&${buildSearchQuery(inputQuery)}`;
+}
 
-    let url = `${BASE_SEARCH_URL}&geocodes=${geocodes}&pagenumber=${pageNumber}&${realEstateQuery}`;
-
-    if (priceQuery) url += `&${priceQuery}`;
-
-    for (const [key, value] of Object.entries(extraParams)) {
-        url += `&${key}=${value}`;
-    }
-
-    return url;
+/**
+ * The same search URL can appear twice with a different property type, and Crawlee would dedupe
+ * the second one away, so every search request gets a hand-built key covering type + page.
+ */
+export function searchUniqueKey({ shape, geopath, geocoordinates, propertyType, operation, pageNumber = 1 }) {
+    const scope = shape ? `shape-${shape}` : (geocoordinates ?? geopath);
+    return `${scope}-${pageNumber}-${propertyType}-${operation}`;
 }
 
 export function getRealEstateTypeOperation(realestateType, operation) {

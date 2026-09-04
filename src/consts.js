@@ -3,15 +3,11 @@ export const LABELS = {
     PROPERTY_LIST: 'PROPERTY_LIST',
     PROPERTY: 'PROPERTY',
 };
-export const MAX_ITEMS_STAT_NAME = 'MAX_ITEMS_STAT';
 
 // Result page size hardcoded in the search URLs below
 export const PAGE_SIZE = 20;
 // Used when `endPage` is missing or null on the input (console prefills 50)
 export const DEFAULT_END_PAGE = 50;
-
-export const SEARCH_LIST_URL = (geocodes, page = 1, realestatetype = 'apartmentrent') =>
-    `https://api.mobile.immobilienscout24.de/search/list?features=adKeysAndStringValues,virtualTour,contactDetails,additionalImages,viareporting,nextgen,calculatedTotalRent,listingsInListFirstSummary,xxlListingType,quickfilters,grouping,projectsInAllRealestateTypes,fairPrice&priceType=calculatedtotalrent&pagesize=20&searchType=region&pagenumber=${page}&geocodes=${geocodes}&sorting=standard&realestatetype=${realestatetype}&price=-&channel=is24`;
 
 export const LISTING_BODY = {
     supportedResultListTypes: [
@@ -26,7 +22,19 @@ export const LISTING_BODY = {
 
 export const BASIC_HEADERS = {
     accept: 'application/json',
+    // Without this the API answers in German and every English label match in
+    // `handleOneProperty` silently misses (the response language follows the caller's IP otherwise).
+    'accept-language': 'en-US,en;q=0.9',
     'x-is24-device': 'iphone',
     'user-agent': 'ImmoScout_27.11_26.1_._',
     priority: 'u=3',
+};
+
+// input `sortBy` value -> API `sorting` value ('-' prefix is descending)
+export const SORTING_MAP = {
+    default: 'standard',
+    newest: '-firstactivation',
+    priceAsc: 'price',
+    priceDesc: '-price',
+    sizeDesc: '-livingspace',
 };

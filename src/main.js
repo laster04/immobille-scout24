@@ -3,11 +3,14 @@ import { Actor } from 'apify';
 
 import { BASIC_HEADERS, DEFAULT_END_PAGE, LABELS, LISTING_BODY, PAGE_SIZE } from './consts.js';
 import {
+    buildFilterParams,
+    getRadiusSearchUrl,
     getRealEstateTypeOperation,
     getSearchUrl,
     getShapeSearchUrl,
     parseShapeUrl,
     parseWebSearchUrl,
+    searchUniqueKey,
 } from './ListingSearchHelper.js';
 import { handleDistrictSearch, handleProperty, handlePropertyList } from './routes.js';
 
@@ -17,7 +20,7 @@ const userInput = (await Actor.getInput()) ?? {};
 const {
     startUrl = [],
     district = null,
-    onlyNewest = false,
+    coordinates = null,
     proxy,
     debugLog = false,
     country = 'de',
@@ -37,11 +40,43 @@ const maxItems = toPositiveNumber(userInput.maxItems);
 const endPage = toPositiveNumber(userInput.endPage) ?? DEFAULT_END_PAGE;
 const minPrice = toPositiveNumber(userInput.minPrice);
 const maxPrice = toPositiveNumber(userInput.maxPrice);
+const radiusKm = toPositiveNumber(userInput.radiusKm);
 
-const normalizedInput = { ...userInput, maxItems, endPage, minPrice, maxPrice, country, operation, propertyType };
+// "52.52, 13.405" -> { latitude, longitude }; the input schema has no float field, so this arrives as text
+const parseCoordinates = (value) => {
+    const [latitude, longitude] = String(value ?? '')
+        .split(/[,;\s]+/)
+        .filter(Boolean)
+        .map(Number);
+    return Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null;
+};
+const point = coordinates ? parseCoordinates(coordinates) : null;
+if (coordinates && !point) {
+    await Actor.fail(`Could not read coordinates out of "${coordinates}" — expected something like "52.52, 13.405".`);
+}
 
-if (!district && startUrl.length === 0) {
-    await Actor.fail('You have to input district param or any startUrls to run crawler..');
+// rooms / size / year / equipment / sorting inputs → API query params.
+// A pasted website URL overrides these, see `buildSearchQuery` in ListingSearchHelper.js.
+const filters = buildFilterParams(userInput);
+
+const normalizedInput = {
+    ...userInput,
+    maxItems,
+    endPage,
+    minPrice,
+    maxPrice,
+    country,
+    operation,
+    propertyType,
+    filters,
+};
+
+const hasCoordinates = point != null && radiusKm != null;
+
+if (!district && !hasCoordinates && startUrl.length === 0) {
+    await Actor.fail(
+        'Nothing to scrape — provide startUrl(s), a Location, or latitude + longitude + radius for a radius search.',
+    );
 }
 
 const proxyConfiguration = await Actor.createProxyConfiguration(proxy);
@@ -67,84 +102,91 @@ const buildStartRequest = (url) => {
         };
     }
 
-    if (url.match(/\/Suche\/shape\//)) {
-        const parsed = parseShapeUrl(url);
-        const resolvedPropertyType = parsed.propertyType ?? propertyType;
-        const resolvedOperation = parsed.operation ?? operation;
-
-        return {
-            url: getShapeSearchUrl({
-                shape: parsed.shape,
-                realestateType: resolvedPropertyType,
-                operation: resolvedOperation,
-                pageNumber: 1,
-                min: minPrice,
-                max: maxPrice,
-                extraParams: parsed.queryParams,
-            }),
-            method: 'GET',
-            uniqueKey: `shape-${parsed.shape}-1`,
-            headers: BASIC_HEADERS,
-            userData: {
-                label: LABELS.PROPERTY_LIST,
-                requestPayload: {
-                    shape: parsed.shape,
-                    pageNumber: 1,
-                    enqueuedItems: 0,
-                    ...normalizedInput,
-                    propertyType: resolvedPropertyType,
-                    operation: resolvedOperation,
-                    extraParams: parsed.queryParams,
-                },
-            },
-        };
+    const isShape = Boolean(url.match(/\/Suche\/shape\//));
+    if (!isShape && !url.match(/\/Suche\//)) {
+        throw new Error('not an immobilienscout24.de search, shape or expose URL');
     }
 
-    if (url.match(/\/Suche\//)) {
-        const parsed = parseWebSearchUrl(url);
-        const resolvedPropertyType = parsed.propertyType ?? propertyType;
-        const resolvedOperation = parsed.operation ?? operation;
+    const parsed = isShape ? parseShapeUrl(url) : parseWebSearchUrl(url);
+    const resolvedPropertyType = parsed.propertyType ?? propertyType;
+    const resolvedOperation = parsed.operation ?? operation;
+    const searchQuery = {
+        realestateType: resolvedPropertyType,
+        operation: resolvedOperation,
+        pageNumber: 1,
+        min: minPrice,
+        max: maxPrice,
+        filters,
+        extraParams: parsed.queryParams,
+    };
+    const requestPayload = {
+        ...(isShape ? { shape: parsed.shape } : { geopath: parsed.geopath }),
+        pageNumber: 1,
+        enqueuedItems: 0,
+        ...normalizedInput,
+        propertyType: resolvedPropertyType,
+        operation: resolvedOperation,
+        extraParams: parsed.queryParams,
+    };
 
-        return {
-            url: getSearchUrl({
-                geocodes: parsed.geopath,
-                realestateType: resolvedPropertyType,
-                operation: resolvedOperation,
-                pageNumber: 1,
-                min: minPrice,
-                max: maxPrice,
-                extraParams: parsed.queryParams,
-            }),
-            method: 'POST',
-            uniqueKey: `${parsed.geopath}-1`,
-            payload: JSON.stringify(LISTING_BODY),
-            headers: BASIC_HEADERS,
-            userData: {
-                label: LABELS.PROPERTY_LIST,
-                requestPayload: {
-                    geopath: parsed.geopath,
-                    pageNumber: 1,
-                    enqueuedItems: 0,
-                    ...normalizedInput,
-                    propertyType: resolvedPropertyType,
-                    operation: resolvedOperation,
-                    extraParams: parsed.queryParams,
-                },
-            },
-        };
-    }
-
-    throw new Error('not an immobilienscout24.de search, shape or expose URL');
+    return {
+        url: isShape
+            ? getShapeSearchUrl({ ...searchQuery, shape: parsed.shape })
+            : getSearchUrl({ ...searchQuery, geocodes: parsed.geopath }),
+        // Shape search is a POST too — the same URL as a GET answers {"error":"what???"}
+        method: 'POST',
+        uniqueKey: searchUniqueKey(requestPayload),
+        payload: JSON.stringify(LISTING_BODY),
+        headers: BASIC_HEADERS,
+        userData: {
+            label: LABELS.PROPERTY_LIST,
+            requestPayload,
+        },
+    };
 };
 
-if (district && startUrl.length === 0) {
-    // Fail fast with a readable message instead of retrying an impossible search eight times
+// Fail fast with a readable message instead of retrying an impossible search eight times
+if (startUrl.length === 0) {
     try {
         getRealEstateTypeOperation(propertyType, operation);
     } catch (err) {
         await Actor.fail(err.message);
     }
+}
 
+if (hasCoordinates && startUrl.length === 0) {
+    const geocoordinates = { ...point, radiusKm };
+    const requestPayload = {
+        geocoordinates,
+        pageNumber: 1,
+        enqueuedItems: 0,
+        ...normalizedInput,
+    };
+
+    await requestQueue.addRequest({
+        url: getRadiusSearchUrl({
+            ...geocoordinates,
+            realestateType: propertyType,
+            operation,
+            pageNumber: 1,
+            min: minPrice,
+            max: maxPrice,
+            filters,
+        }),
+        method: 'POST',
+        uniqueKey: searchUniqueKey({
+            ...requestPayload,
+            geocoordinates: `${point.latitude};${point.longitude};${radiusKm}`,
+        }),
+        payload: JSON.stringify(LISTING_BODY),
+        headers: BASIC_HEADERS,
+        userData: {
+            label: LABELS.PROPERTY_LIST,
+            requestPayload,
+        },
+    });
+    enqueuedStartRequests++;
+} else if (district && startUrl.length === 0) {
     const url = `https://api.mobile.immobilienscout24.de/geo/autocomplete?s=&nextgen=true&c=${country}&i=${district}`;
 
     await requestQueue.addRequest({
@@ -159,6 +201,9 @@ if (district && startUrl.length === 0) {
                 minPrice,
                 maxPrice,
                 operation,
+                maxItems,
+                endPage,
+                filters,
             },
         },
     });
@@ -181,7 +226,21 @@ if (enqueuedStartRequests === 0) {
 
 // `maxItems` caps dataset items, not requests — leave headroom for the search pages
 // (one per PAGE_SIZE properties) so the crawler is not shut down before the items are collected.
-const maxRequestsPerCrawl = maxItems ? maxItems + Math.ceil(maxItems / PAGE_SIZE) + 5 : undefined;
+const maxRequestsPerCrawl = maxItems ? maxItems + Math.ceil(maxItems / PAGE_SIZE) + startUrl.length + 5 : undefined;
+
+// Shared by every search request in the run so that `maxItems` caps the dataset as a whole
+const createItemCounter = () => {
+    let enqueued = 0;
+    return {
+        get count() {
+            return enqueued;
+        },
+        increment() {
+            enqueued++;
+        },
+    };
+};
+const counter = createItemCounter();
 
 const crawler = new CheerioCrawler({
     proxyConfiguration,
@@ -203,10 +262,7 @@ const crawler = new CheerioCrawler({
             case LABELS.DISTRICT_SEARCH:
                 return handleDistrictSearch(context, proxyConfiguration);
             case LABELS.PROPERTY_LIST:
-                return handlePropertyList(context, {
-                    userInput: normalizedInput,
-                    onlyNewest,
-                });
+                return handlePropertyList(context, { userInput: normalizedInput, counter });
             case LABELS.PROPERTY:
                 return handleProperty(context, proxyConfiguration);
             default:
