@@ -115,22 +115,26 @@
         "minRooms": {
             "title": "Minimum rooms",
             "type": "integer",
+            "description": "Fewest rooms a listing may have, e.g. 3",
             "nullable": true
         },
         "maxRooms": {
             "title": "Maximum rooms",
             "type": "integer",
+            "description": "Most rooms a listing may have, e.g. 5",
             "nullable": true
         },
         "minSize": {
             "title": "Minimum living space",
             "type": "integer",
+            "description": "Smallest living space in m², e.g. 60",
             "unit": "m²",
             "nullable": true
         },
         "maxSize": {
             "title": "Maximum living space",
             "type": "integer",
+            "description": "Largest living space in m², e.g. 120",
             "unit": "m²",
             "nullable": true
         },
