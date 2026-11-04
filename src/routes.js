@@ -65,6 +65,17 @@ export const handleDistrictSearch = async (context) => {
     });
 };
 
+const hasNextPage = ({ page, json, endPage, claims }) => {
+    if (runIsFull()) return false;
+    if (page >= json.numberOfPages || (endPage != null && page >= endPage)) return false;
+    // Monitoring sorts newest first, so a page with nothing new means every later page is old too.
+    if (isMonitoring() && claims.ok === 0 && claims.known > 0) {
+        log.info(`Page ${page} has only listings seen in earlier runs - the rest of this search is not new.`);
+        return false;
+    }
+    return true;
+};
+
 export const handlePropertyList = async (context, { userInput }) => {
     const {
         json,
@@ -87,13 +98,14 @@ export const handlePropertyList = async (context, { userInput }) => {
     // Every listing is claimed run-wide: that dedupes overlapping searches, caps the whole run at
     // `maxItems`, stops at the user's max charge and (monitoring) skips listings returned before.
     const claims = { ok: 0, duplicate: 0, known: 0, limit: 0, budget: 0 };
+    const details = [];
     for (const article of json.resultListItems) {
         if (article.type !== 'EXPOSE_RESULT') continue;
         const claim = claimListing(article.item.id);
         claims[claim]++;
         if (claim !== 'ok') continue;
 
-        await requestQueue.addRequest({
+        details.push({
             url: `https://api.mobile.immobilienscout24.de/expose/${article.item.id}`,
             method: 'GET',
             headers: BASIC_HEADERS,
@@ -113,28 +125,29 @@ export const handlePropertyList = async (context, { userInput }) => {
     }
     log.debug(`Page ${page}: ${JSON.stringify(claims)}`);
 
-    if (runIsFull()) return;
-    if (page >= json.numberOfPages || (endPage != null && page >= endPage)) return;
-    // Monitoring sorts newest first, so a page with nothing new means every later page is old too.
-    if (isMonitoring() && claims.ok === 0 && claims.known > 0) {
-        log.info(`Page ${page} has only listings seen in earlier runs - the rest of this search is not new.`);
-        return;
+    // The next page goes to the front of the queue, ahead of this page's detail requests: pages are
+    // read one after another, and behind 20 details each the queue ran dry on the platform
+    // (concurrency fell to 3 of 10, ~2 listings/s, Nov 2026).
+    if (hasNextPage({ page, json, endPage, claims })) {
+        const nextBody = { ...body, pageNumber: page + 1 };
+        await requestQueue.addRequest(
+            {
+                url: nextPageUrl(nextBody),
+                uniqueKey: searchUniqueKey(nextBody),
+                // Every search type is a POST with the same body — a GET answers {"error":"what???"}
+                method: 'POST',
+                payload: JSON.stringify(LISTING_BODY),
+                headers: BASIC_HEADERS,
+                userData: {
+                    ...userData,
+                    label: LABELS.PROPERTY_LIST,
+                    requestPayload: nextBody,
+                },
+            },
+            { forefront: true },
+        );
     }
-
-    body.pageNumber = page + 1;
-    await requestQueue.addRequest({
-        url: nextPageUrl(body),
-        uniqueKey: searchUniqueKey(body),
-        // Every search type is a POST with the same body — a GET answers {"error":"what???"}
-        method: 'POST',
-        payload: JSON.stringify(LISTING_BODY),
-        headers: BASIC_HEADERS,
-        userData: {
-            ...userData,
-            label: LABELS.PROPERTY_LIST,
-            requestPayload: body,
-        },
-    });
+    if (details.length > 0) await requestQueue.addRequests(details);
 };
 
 /**

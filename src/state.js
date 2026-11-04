@@ -39,7 +39,9 @@ export const initRunState = async ({ maxItems, monitoringMode, searchDefinition 
     if (runState.budget === undefined) {
         const items = sdkChargeableItems();
         runState.budget = Number.isFinite(items) ? items : null;
-        if (runState.budget != null) log.info(`Your maximum charge for this run covers ${runState.budget} results.`);
+        // Without a max charge set the figure is in the millions - only worth logging when it bites
+        if (runState.budget != null && runState.budget < 100000)
+            log.info(`Your maximum charge for this run covers ${runState.budget} results.`);
     }
 
     if (monitoringMode) {
