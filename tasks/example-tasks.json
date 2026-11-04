@@ -111,7 +111,7 @@
         }
     },
     {
-        "name": "test-overlapping-urls",
+        "name": "test-is24-overlapping-urls",
         "title": "Test: overlapping URLs are returned once",
         "description": "Two Berlin rental searches that overlap plus one expose URL - every listing once, maxItems across the run.",
         "input": {
@@ -131,7 +131,7 @@
         }
     },
     {
-        "name": "test-monitoring",
+        "name": "test-is24-monitoring",
         "title": "Test: monitoring mode",
         "description": "Potsdam rentals in monitoring mode. Run twice - the second run should stop at page 1 with no or few items.",
         "input": {
@@ -142,7 +142,7 @@
         }
     },
     {
-        "name": "test-no-limits",
+        "name": "test-is24-no-limits",
         "title": "Test: no maxItems and no endPage",
         "description": "Berlin rentals (~4,900) with no endPage and maxItems 1,100 - must go past page 50 (the old default stopped at 1,000).",
         "input": {
