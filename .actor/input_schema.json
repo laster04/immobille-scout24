@@ -195,7 +195,7 @@
         "sortBy": {
             "title": "Sort results by",
             "type": "string",
-            "description": "\"Newest first\" is the one to use for monitoring the market — combine it with a small item limit to get only fresh listings.",
+            "description": "Order of the results. Ignored in monitoring mode, which always sorts newest first.",
             "editor": "select",
             "default": "default",
             "enum": ["default", "newest", "priceAsc", "priceDesc", "sizeDesc"],
@@ -207,10 +207,17 @@
                 "Living space: largest first"
             ]
         },
+        "monitoringMode": {
+            "title": "Only new listings (monitoring)",
+            "type": "boolean",
+            "description": "Return - and pay for - only listings that earlier runs of the same search did not return. Schedule the Actor daily or hourly to get new listings as they appear. The first run returns the whole search. Changing the URL, location or a filter starts a new list; changing limits or sorting does not.",
+            "default": false,
+            "sectionCaption": "Monitoring"
+        },
         "maxItems": {
             "title": "Limit the number of items",
             "type": "integer",
-            "description": "Stop after this many properties. Leave empty to scrape everything the search returns.",
+            "description": "Stop after this many properties for the whole run, across all URLs. Leave empty to scrape everything the search returns.",
             "nullable": true,
             "prefill": 10,
             "sectionCaption": "Limits"
@@ -218,9 +225,8 @@
         "endPage": {
             "title": "Limit of scraped pages",
             "type": "integer",
-            "description": "Stop after this many result pages (20 properties per page)",
-            "nullable": true,
-            "prefill": 50
+            "description": "Stop each search after this many result pages (20 properties per page). Leave empty for every page.",
+            "nullable": true
         },
         "proxy": {
             "title": "Proxy configuration",

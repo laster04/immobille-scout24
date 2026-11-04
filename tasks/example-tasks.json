@@ -1,0 +1,155 @@
+[
+    {
+        "name": "new-apartments-for-rent-berlin-daily-alerts",
+        "title": "New Apartments for Rent in Berlin – Daily Alerts",
+        "description": "Only the Berlin rental apartments listed since your last run. Schedule it daily and pay only for new listings – rent, size, rooms, address, photos and landlord contact.",
+        "input": {
+            "district": "Berlin",
+            "operation": "rent",
+            "propertyType": "apartment",
+            "monitoringMode": true,
+            "maxItems": 300
+        }
+    },
+    {
+        "name": "new-apartments-for-sale-munich-daily-alerts",
+        "title": "New Apartments for Sale in Munich – Daily Alerts",
+        "description": "Get every new Munich apartment for sale on ImmoScout24 once a day. Only listings you haven't seen are returned and charged – price, €/m², size, energy class and agent phone.",
+        "input": {
+            "startUrl": [
+                {
+                    "url": "https://www.immobilienscout24.de/Suche/de/bayern/muenchen/wohnung-kaufen"
+                }
+            ],
+            "monitoringMode": true,
+            "maxItems": 300
+        }
+    },
+    {
+        "name": "3-room-apartments-to-rent-hamburg-with-balcony",
+        "title": "3+ Room Apartments to Rent in Hamburg with Balcony",
+        "description": "Hamburg rental apartments with 3 or more rooms and a balcony. Base rent, service charge, total rent, size, floor, address and contact as CSV, Excel or JSON.",
+        "input": {
+            "startUrl": [
+                {
+                    "url": "https://www.immobilienscout24.de/Suche/de/hamburg/hamburg/wohnung-mieten?numberofrooms=3.0-&equipment=balcony"
+                }
+            ],
+            "maxItems": 200
+        }
+    },
+    {
+        "name": "houses-for-sale-frankfurt-under-600000",
+        "title": "Houses for Sale in Frankfurt Under €600,000",
+        "description": "Houses for sale in Frankfurt am Main up to €600,000. Price, living space, plot area, rooms, year built, energy certificate, address and agent contact.",
+        "input": {
+            "district": "Frankfurt am Main",
+            "operation": "sale",
+            "propertyType": "house",
+            "maxPrice": 600000,
+            "maxItems": 200
+        }
+    },
+    {
+        "name": "apartments-for-sale-vienna",
+        "title": "Apartments for Sale in Vienna (ImmoScout24.at)",
+        "description": "Vienna apartments for sale with price, €/m², size, rooms, floor, condition, coordinates and agent contact. Newest listings first.",
+        "input": {
+            "country": "at",
+            "district": "Wien",
+            "operation": "sale",
+            "propertyType": "apartment",
+            "sortBy": "newest",
+            "maxItems": 200
+        }
+    },
+    {
+        "name": "building-plots-for-sale-around-cologne",
+        "title": "Building Plots for Sale within 20 km of Cologne",
+        "description": "Residential building plots for sale within 20 km of Cologne city centre. Price, plot area, address and coordinates for land acquisition and market research.",
+        "input": {
+            "coordinates": "50.9375, 6.9603",
+            "radiusKm": 20,
+            "operation": "sale",
+            "propertyType": "plot",
+            "maxItems": 200
+        }
+    },
+    {
+        "name": "pet-friendly-apartments-to-rent-berlin",
+        "title": "Pet-Friendly Apartments to Rent in Berlin",
+        "description": "Berlin rental apartments that allow pets, newest first. Rent breakdown, size, rooms, features, address and landlord contact.",
+        "input": {
+            "district": "Berlin",
+            "operation": "rent",
+            "propertyType": "apartment",
+            "petsAllowed": true,
+            "sortBy": "newest",
+            "maxItems": 100
+        }
+    },
+    {
+        "name": "foreclosure-auctions-berlin",
+        "title": "Foreclosure Auctions (Zwangsversteigerung) in Berlin",
+        "description": "Berlin properties in compulsory auction on ImmoScout24, with the market value, size, address, auction notes and photos.",
+        "input": {
+            "district": "Berlin",
+            "operation": "sale",
+            "propertyType": "compulsoryauction",
+            "maxItems": 100
+        }
+    },
+    {
+        "name": "investment-properties-for-sale-leipzig",
+        "title": "Investment Properties for Sale in Leipzig",
+        "description": "Apartment buildings and other investment properties for sale in Leipzig. Price, rental income details, size, year built, address and agent contact.",
+        "input": {
+            "district": "Leipzig",
+            "operation": "sale",
+            "propertyType": "investment",
+            "maxItems": 100
+        }
+    },
+    {
+        "name": "test-overlapping-urls",
+        "title": "Test: overlapping URLs are returned once",
+        "description": "Two Berlin rental searches that overlap plus one expose URL - every listing once, maxItems across the run.",
+        "input": {
+            "startUrl": [
+                {
+                    "url": "https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten?numberofrooms=3.0-"
+                },
+                {
+                    "url": "https://www.immobilienscout24.de/Suche/de/berlin/berlin/wohnung-mieten"
+                },
+                {
+                    "url": "https://www.immobilienscout24.de/expose/157410302"
+                }
+            ],
+            "sortBy": "newest",
+            "maxItems": 100
+        }
+    },
+    {
+        "name": "test-monitoring",
+        "title": "Test: monitoring mode",
+        "description": "Potsdam rentals in monitoring mode. Run twice - the second run should stop at page 1 with no or few items.",
+        "input": {
+            "district": "Potsdam",
+            "operation": "rent",
+            "propertyType": "apartment",
+            "monitoringMode": true
+        }
+    },
+    {
+        "name": "test-no-limits",
+        "title": "Test: no maxItems and no endPage",
+        "description": "Berlin rentals (~4,900) with no endPage and maxItems 1,100 - must go past page 50 (the old default stopped at 1,000).",
+        "input": {
+            "district": "Berlin",
+            "operation": "rent",
+            "propertyType": "apartment",
+            "maxItems": 1100
+        }
+    }
+]

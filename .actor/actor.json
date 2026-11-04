@@ -1,8 +1,8 @@
 {
     "actorSpecification": 1,
     "name": "immobille-scout24",
-    "title": "ImmobilienScout24 Scraper — ImmoScout24 .de/.at",
-    "description": "Paste any immobilienscout24.de URL and get the listings as structured data: price, size, rooms, energy class, features, agent contact, photos and coordinates — 65+ fields per property.",
+    "title": "ImmobilienScout24 Scraper 💰 $0.80/1K – Germany & Austria",
+    "description": "Scrape any ImmobilienScout24 search in Germany or Austria: apartments, houses, plots, commercial and foreclosures, for sale or rent. Price, €/m², size, energy class, address, GPS, agent phone, photos. Monitoring mode returns only new listings.",
     "version": "1.0.0",
     "meta": {
         "templateId": "js-crawlee-cheerio",

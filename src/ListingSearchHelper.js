@@ -227,9 +227,19 @@ export function getRadiusSearchUrl(inputQuery) {
  * The same search URL can appear twice with a different property type, and Crawlee would dedupe
  * the second one away, so every search request gets a hand-built key covering type + page.
  */
-export function searchUniqueKey({ shape, geopath, geocoordinates, propertyType, operation, pageNumber = 1 }) {
+export function searchUniqueKey({
+    shape,
+    geopath,
+    geocoordinates,
+    propertyType,
+    operation,
+    pageNumber = 1,
+    extraParams = {},
+}) {
     const scope = shape ? `shape-${shape}` : (geocoordinates ?? geopath);
-    return `${scope}-${pageNumber}-${propertyType}-${operation}`;
+    // Two pasted URLs of the same place and type with different filters are different searches
+    const params = new URLSearchParams(Object.entries(extraParams).sort()).toString();
+    return `${scope}-${pageNumber}-${propertyType}-${operation}${params ? `-${params}` : ''}`;
 }
 
 export function getRealEstateTypeOperation(realestateType, operation) {
@@ -329,14 +339,8 @@ export function getRealEstateTypeOperation(realestateType, operation) {
     }
 }
 
+// No `price=-` without a bound: some types (compulsory auctions) reject any price param with HTTP 412
 function getPriceFilter(min, max) {
-    let priceQuery = '-';
-
-    if (min != null) {
-        priceQuery = `${min}${priceQuery}`;
-    }
-    if (max != null) {
-        priceQuery = `${priceQuery}${max}`;
-    }
-    return `price=${priceQuery}`;
+    if (min == null && max == null) return null;
+    return `price=${min ?? ''}-${max ?? ''}`;
 }
