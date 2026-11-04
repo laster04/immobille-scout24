@@ -6,8 +6,6 @@ export const LABELS = {
 
 // Result page size hardcoded in the search URLs below
 export const PAGE_SIZE = 20;
-// Used when `endPage` is missing or null on the input (console prefills 50)
-export const DEFAULT_END_PAGE = 50;
 
 export const LISTING_BODY = {
     supportedResultListTypes: [

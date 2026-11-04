@@ -1,7 +1,7 @@
 import { CheerioCrawler, log } from '@crawlee/cheerio';
 import { Actor } from 'apify';
 
-import { BASIC_HEADERS, DEFAULT_END_PAGE, LABELS, LISTING_BODY, PAGE_SIZE } from './consts.js';
+import { BASIC_HEADERS, LABELS, LISTING_BODY } from './consts.js';
 import {
     buildFilterParams,
     getRadiusSearchUrl,
@@ -13,6 +13,7 @@ import {
     searchUniqueKey,
 } from './ListingSearchHelper.js';
 import { handleDistrictSearch, handleProperty, handlePropertyList } from './routes.js';
+import { initRunState, releaseListing, saveMonitoring } from './state.js';
 
 await Actor.init();
 
@@ -26,6 +27,7 @@ const {
     country = 'de',
     operation = 'sale',
     propertyType = 'apartment',
+    monitoringMode = false,
 } = userInput;
 
 if (debugLog) {
@@ -37,7 +39,8 @@ if (debugLog) {
 // or silently disables a limit comparison (`0 >= null` is true), so normalize here.
 const toPositiveNumber = (value) => (typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : null);
 const maxItems = toPositiveNumber(userInput.maxItems);
-const endPage = toPositiveNumber(userInput.endPage) ?? DEFAULT_END_PAGE;
+// Empty = every page the search has
+const endPage = toPositiveNumber(userInput.endPage);
 const minPrice = toPositiveNumber(userInput.minPrice);
 const maxPrice = toPositiveNumber(userInput.maxPrice);
 const radiusKm = toPositiveNumber(userInput.radiusKm);
@@ -57,7 +60,9 @@ if (coordinates && !point) {
 
 // rooms / size / year / equipment / sorting inputs → API query params.
 // A pasted website URL overrides these, see `buildSearchQuery` in ListingSearchHelper.js.
-const filters = buildFilterParams(userInput);
+// Monitoring always sorts newest first: that is what lets a run stop at the first page of
+// listings it has already seen instead of paging through the whole search every time.
+const filters = buildFilterParams(monitoringMode ? { ...userInput, sortBy: 'newest' } : userInput);
 
 const normalizedInput = {
     ...userInput,
@@ -78,6 +83,36 @@ if (!district && !hasCoordinates && startUrl.length === 0) {
         'Nothing to scrape — provide startUrl(s), a Location, or latitude + longitude + radius for a radius search.',
     );
 }
+
+// What makes two runs "the same search" for monitoring mode. Limits and sorting are left out;
+// keys are added only when set, so a new optional input never changes existing users' hashes.
+const searchDefinition = Object.fromEntries(
+    Object.entries({
+        startUrls: startUrl
+            .map(({ url }) => {
+                try {
+                    const parsed = new URL(url);
+                    for (const param of ['sorting', 'pagenumber']) parsed.searchParams.delete(param);
+                    return parsed.toString();
+                } catch {
+                    return url;
+                }
+            })
+            .sort(),
+        // Location / radius / type inputs are ignored when URLs are given, so they don't define the search then
+        ...(startUrl.length === 0 && {
+            district,
+            country,
+            coordinates: point && radiusKm ? `${point.latitude},${point.longitude},${radiusKm}` : null,
+            operation,
+            propertyType,
+        }),
+        minPrice,
+        maxPrice,
+        filters: Object.fromEntries(Object.entries(filters).filter(([key]) => key !== 'sorting')),
+    }).filter(([, value]) => value != null && !(Array.isArray(value) && value.length === 0)),
+);
+await initRunState({ maxItems, monitoringMode, searchDefinition });
 
 const proxyConfiguration = await Actor.createProxyConfiguration(proxy);
 const requestQueue = await Actor.openRequestQueue();
@@ -122,7 +157,6 @@ const buildStartRequest = (url) => {
     const requestPayload = {
         ...(isShape ? { shape: parsed.shape } : { geopath: parsed.geopath }),
         pageNumber: 1,
-        enqueuedItems: 0,
         ...normalizedInput,
         propertyType: resolvedPropertyType,
         operation: resolvedOperation,
@@ -159,7 +193,6 @@ if (hasCoordinates && startUrl.length === 0) {
     const requestPayload = {
         geocoordinates,
         pageNumber: 1,
-        enqueuedItems: 0,
         ...normalizedInput,
     };
 
@@ -224,27 +257,8 @@ if (enqueuedStartRequests === 0) {
     await Actor.fail('None of the provided startUrls could be used, there is nothing to scrape.');
 }
 
-// `maxItems` caps dataset items, not requests — leave headroom for the search pages
-// (one per PAGE_SIZE properties) so the crawler is not shut down before the items are collected.
-const maxRequestsPerCrawl = maxItems ? maxItems + Math.ceil(maxItems / PAGE_SIZE) + startUrl.length + 5 : undefined;
-
-// Shared by every search request in the run so that `maxItems` caps the dataset as a whole
-const createItemCounter = () => {
-    let enqueued = 0;
-    return {
-        get count() {
-            return enqueued;
-        },
-        increment() {
-            enqueued++;
-        },
-    };
-};
-const counter = createItemCounter();
-
 const crawler = new CheerioCrawler({
     proxyConfiguration,
-    maxRequestsPerCrawl,
     maxConcurrency: 10,
     maxRequestRetries: 8,
     requestQueue,
@@ -260,16 +274,18 @@ const crawler = new CheerioCrawler({
 
         switch (label) {
             case LABELS.DISTRICT_SEARCH:
-                return handleDistrictSearch(context, proxyConfiguration);
+                return handleDistrictSearch(context);
             case LABELS.PROPERTY_LIST:
-                return handlePropertyList(context, { userInput: normalizedInput, counter });
+                return handlePropertyList(context, { userInput: normalizedInput });
             case LABELS.PROPERTY:
-                return handleProperty(context, proxyConfiguration);
+                return handleProperty(context);
             default:
                 return log.warning('Unknown label');
         }
     },
     failedRequestHandler({ request }, error) {
+        // The listing was counted toward `maxItems` when its search page claimed it
+        if (request.userData.exposeId != null) releaseListing(request.userData.exposeId);
         // Without this, blocked or broken requests only show up as a green run with no data
         log.error(`Request failed after ${request.retryCount} retries: ${request.url}`, { error: error.message });
     },
@@ -277,5 +293,6 @@ const crawler = new CheerioCrawler({
 
 log.info('Starting the crawl.');
 await crawler.run();
+await saveMonitoring();
 
 await Actor.exit();

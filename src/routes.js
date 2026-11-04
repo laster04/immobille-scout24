@@ -1,7 +1,8 @@
-import { Dataset, log } from '@crawlee/cheerio';
+import { log } from '@crawlee/cheerio';
 
-import { BASIC_HEADERS, DEFAULT_END_PAGE, LABELS, LISTING_BODY } from './consts.js';
+import { BASIC_HEADERS, LABELS, LISTING_BODY } from './consts.js';
 import { getRadiusSearchUrl, getSearchUrl, getShapeSearchUrl, searchUniqueKey } from './ListingSearchHelper.js';
+import { claimListing, isMonitoring, pushListing, runIsFull } from './state.js';
 
 /** Rebuilds the search URL for the next page of whichever search type this request came from. */
 const nextPageUrl = (body) => {
@@ -39,7 +40,6 @@ export const handleDistrictSearch = async (context) => {
     const requestPayload = {
         geopath: foundLocation.geopath,
         pageNumber: 1,
-        enqueuedItems: 0,
         ...userInput,
     };
 
@@ -65,7 +65,7 @@ export const handleDistrictSearch = async (context) => {
     });
 };
 
-export const handlePropertyList = async (context, { userInput, counter }) => {
+export const handlePropertyList = async (context, { userInput }) => {
     const {
         json,
         crawler: { requestQueue },
@@ -75,19 +75,23 @@ export const handlePropertyList = async (context, { userInput, counter }) => {
         // e.g. an invalid shape polyline makes the API answer with {"error":"what???"}
         throw new Error(`Search API returned no result list: ${JSON.stringify(json).slice(0, 200)}`);
     }
-    // `maxItems` / `endPage` are nullable in the input schema — the console sends `null` for a cleared field
-    const maxItems = userInput.maxItems ?? Infinity;
-    const endPage = userInput.endPage ?? DEFAULT_END_PAGE;
+    const { endPage } = userInput;
     const { requestPayload: body } = userData;
+    const page = body.pageNumber;
+    if (page === 1) {
+        log.info(`Search has ${json.totalResults} listings on ${json.numberOfPages} pages.`, {
+            url: context.request.url,
+        });
+    }
 
-    // Count the properties actually enqueued instead of assuming every page was full.
-    // The counter is shared by every search in the run, so `maxItems` caps the whole dataset
-    // and not each start URL separately.
+    // Every listing is claimed run-wide: that dedupes overlapping searches, caps the whole run at
+    // `maxItems`, stops at the user's max charge and (monitoring) skips listings returned before.
+    const claims = { ok: 0, duplicate: 0, known: 0, limit: 0, budget: 0 };
     for (const article of json.resultListItems) {
-        if (counter.count >= maxItems) {
-            break;
-        }
         if (article.type !== 'EXPOSE_RESULT') continue;
+        const claim = claimListing(article.item.id);
+        claims[claim]++;
+        if (claim !== 'ok') continue;
 
         await requestQueue.addRequest({
             url: `https://api.mobile.immobilienscout24.de/expose/${article.item.id}`,
@@ -96,6 +100,7 @@ export const handlePropertyList = async (context, { userInput, counter }) => {
             userData: {
                 ...userData,
                 label: LABELS.PROPERTY,
+                exposeId: article.item.id,
                 // Only the result list knows these — the expose endpoint doesn't return them
                 listItem: {
                     published: article.item.published,
@@ -105,32 +110,31 @@ export const handlePropertyList = async (context, { userInput, counter }) => {
                 },
             },
         });
-        counter.increment();
+    }
+    log.debug(`Page ${page}: ${JSON.stringify(claims)}`);
+
+    if (runIsFull()) return;
+    if (page >= json.numberOfPages || (endPage != null && page >= endPage)) return;
+    // Monitoring sorts newest first, so a page with nothing new means every later page is old too.
+    if (isMonitoring() && claims.ok === 0 && claims.known > 0) {
+        log.info(`Page ${page} has only listings seen in earlier runs - the rest of this search is not new.`);
+        return;
     }
 
-    const page = body.pageNumber;
-    if (page === 1) {
-        log.info(`Total pageItems ${json.totalResults}`);
-    }
-
-    const hasMorePages = page < endPage && page < json.numberOfPages;
-    if (counter.count < maxItems && hasMorePages) {
-        body.pageNumber = page + 1;
-
-        await requestQueue.addRequest({
-            url: nextPageUrl(body),
-            uniqueKey: searchUniqueKey(body),
-            // Every search type is a POST with the same body — a GET answers {"error":"what???"}
-            method: 'POST',
-            payload: JSON.stringify(LISTING_BODY),
-            headers: BASIC_HEADERS,
-            userData: {
-                ...userData,
-                label: LABELS.PROPERTY_LIST,
-                requestPayload: body,
-            },
-        });
-    }
+    body.pageNumber = page + 1;
+    await requestQueue.addRequest({
+        url: nextPageUrl(body),
+        uniqueKey: searchUniqueKey(body),
+        // Every search type is a POST with the same body — a GET answers {"error":"what???"}
+        method: 'POST',
+        payload: JSON.stringify(LISTING_BODY),
+        headers: BASIC_HEADERS,
+        userData: {
+            ...userData,
+            label: LABELS.PROPERTY_LIST,
+            requestPayload: body,
+        },
+    });
 };
 
 /**
@@ -171,12 +175,17 @@ const handleOneProperty = (property, operation, listItem = {}) => {
         objectNumber: ad.obj_objectnumber,
         operation,
         // Price stays the headline number for the operation; the components below are always filled in too
-        price: operation === 'rent' ? toNumber(ad.obj_baseRent ?? ad.obj_rent) : toNumber(ad.obj_purchasePrice),
+        // Compulsory auctions have no purchase price, only the court's market value
+        price:
+            operation === 'rent'
+                ? toNumber(ad.obj_baseRent ?? ad.obj_rent)
+                : toNumber(ad.obj_purchasePrice ?? ad.obj_marketValue),
         purchasePrice: toNumber(ad.obj_purchasePrice),
         baseRent: toNumber(ad.obj_baseRent ?? ad.obj_rent),
         serviceCharge: toNumber(ad.obj_serviceCharge),
         totalRent: toNumber(ad.obj_totalRent),
         hasCommission: toBool(ad.obj_courtage),
+        marketValue: toNumber(ad.obj_marketValue),
 
         // Houses use obj_buildingType where apartments use obj_typeOfFlat
         typology: ad.obj_typeOfFlat ?? ad.obj_buildingType,
@@ -286,12 +295,24 @@ const handleOneProperty = (property, operation, listItem = {}) => {
 export const handleProperty = async (context) => {
     const {
         json,
+        crawler,
         request: {
-            userData: { requestPayload, listItem },
+            userData: { requestPayload, listItem, exposeId },
         },
     } = context;
 
-    await Dataset.pushData(
+    // Pasted expose URLs never went through a search, so they are claimed here - and returned even
+    // when a monitoring run has seen them before, since the user asked for exactly that listing.
+    if (exposeId == null) {
+        const claim = claimListing(json?.header?.id, { ignoreKnown: true });
+        if (claim !== 'ok') {
+            log.info(`Skipping expose ${json?.header?.id}: ${claim}`);
+            return;
+        }
+    }
+
+    await pushListing(
+        crawler,
         handleOneProperty(json, inferOperation(json, requestPayload?.operation ?? 'sale'), listItem ?? {}),
     );
 };
